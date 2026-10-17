@@ -48,6 +48,8 @@ module OpenTelemetry
 
             def query(sql)
               context_attributes = OpenTelemetry::Instrumentation::Trilogy.attributes
+              defer_statement = config[:db_statement] == :obfuscate_when_recording
+              parent_span = OpenTelemetry::Trace.current_span if defer_statement
 
               tracer.in_span(
                 OpenTelemetry::Helpers::MySQL.database_span_name(
@@ -60,6 +62,13 @@ module OpenTelemetry
                 kind: :client,
                 record_exception: config[:record_exception]
               ) do |span, context|
+                if defer_statement && span.recording? && !span.equal?(parent_span) &&
+                   !(context_attributes.key?(::OpenTelemetry::SemanticConventions::Trace::DB_STATEMENT) && context_attributes.key?('db.query.text'))
+                  obfuscated = OpenTelemetry::Helpers::SqlProcessor.obfuscate_sql(sql, obfuscation_limit: config[:obfuscation_limit], adapter: :mysql)
+                  span.set_attribute(::OpenTelemetry::SemanticConventions::Trace::DB_STATEMENT, obfuscated) unless context_attributes.key?(::OpenTelemetry::SemanticConventions::Trace::DB_STATEMENT)
+                  span.set_attribute('db.query.text', obfuscated) unless context_attributes.key?('db.query.text')
+                end
+
                 if propagator && sql.frozen?
                   sql = +sql
                   propagator.inject(sql, context: context)

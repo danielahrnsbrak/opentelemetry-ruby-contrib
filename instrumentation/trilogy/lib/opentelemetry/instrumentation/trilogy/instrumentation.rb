@@ -22,6 +22,9 @@ module OpenTelemetry
       #
       # - `:obfuscate` **(default)** - Replaces literal values with `?` to prevent
       #   sensitive data from being recorded.
+      # - `:obfuscate_when_recording` - Obfuscates only when the query span records.
+      #   Generated query text is unavailable to samplers and span processors at
+      #   span start. Use only when they do not require the query text.
       # - `:include` - Records the raw SQL query as-is.
       # - `:omit` - Excludes the SQL query attribute entirely.
       #
@@ -87,7 +90,7 @@ module OpenTelemetry
         end
 
         option :peer_service, default: nil, validate: :string
-        option :db_statement, default: :obfuscate, validate: %I[omit include obfuscate]
+        option :db_statement, default: :obfuscate, validate: %I[omit include obfuscate obfuscate_when_recording]
         option :span_name, default: :statement_type, validate: %I[statement_type db_name db_operation_and_name]
         option :obfuscation_limit, default: 2000, validate: :integer
         option :propagator, default: 'none', validate: %w[none tracecontext vitess]

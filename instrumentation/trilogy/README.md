@@ -59,12 +59,26 @@ This gem requires Trilogy 2.11 or higher and will not work with a future Trilogy
 
 | Option | Default | Description |
 | ------ | ------- | ----------- |
-| `db_statement` | `:obfuscate` | Controls how SQL queries appear in spans. `:obfuscate` replaces literal values with `?`, `:include` records the raw SQL, `:omit` excludes the attribute entirely. |
+| `db_statement` | `:obfuscate` | Controls how SQL queries appear in spans. `:obfuscate` replaces literal values with `?`, `:include` records the raw SQL, `:obfuscate_when_recording` obfuscates only when the query span records (see below), `:omit` excludes the attribute entirely. |
 | `obfuscation_limit` | `2000` | Maximum length of the obfuscated SQL statement. Statements exceeding this limit are truncated. |
 | `peer_service` | `nil` | Deprecated with no replacement. Sets the `peer.service` attribute on spans (old semantic conventions only). |
 | `propagator` | `'none'` | Propagator for injecting trace context into SQL comments. `'none'` disables propagation, `'tracecontext'` uses W3C Trace Context, `'vitess'` uses Vitess-style propagation (requires `opentelemetry-propagator-vitess` gem). |
 | `record_exception` | `true` | Records exceptions as span events when an error occurs. |
 | `span_name` | `:statement_type` | Controls span naming (old semantic conventions only). `:statement_type` uses the SQL operation (e.g., `SELECT`), `:db_name` uses the database name, `:db_operation_and_name` combines both. |
+
+With `db_statement: :obfuscate_when_recording`, SQL obfuscation runs after the
+sampling decision and only for a recording query span, including a span that
+records without being sampled. Dropped spans still execute and propagate trace
+context normally. This can avoid unnecessary obfuscation when query spans are
+dropped frequently, while retaining the same obfuscated statements on recording
+spans.
+
+Unlike the default `:obfuscate`, generated query text is unavailable to samplers
+and span processors at span start. Choose this option only when they do not need
+query text to make their decisions. Connection attributes and attributes supplied
+by `Trilogy.with_attributes` remain available at span start; explicit query text
+overrides take precedence. The `obfuscation_limit` and redaction behavior are
+unchanged.
 
 ## Semantic Conventions
 
